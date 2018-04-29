@@ -109,3 +109,32 @@ if (final_run) {
             row.names = FALSE, 
             fileEncoding = 'UTF-8')
 }
+
+# Simulated ILI data
+
+ili_sim_list <-
+  lapply(orgunit, function(x)
+    gen_district_data_for_one_dataelement(dataelement='kLbl3xxK0I5', orgunit=x, periods = periods))
+
+ili_sim <- rbindlist(ili_sim_list)
+
+if (final_run) {  
+  write.csv(ili_sim, 
+            paste('data/', Sys.Date(), 'sim_ili_data.csv'), 
+            row.names = FALSE, 
+            fileEncoding = 'UTF-8')
+}
+
+ili_deaths <- copy(ili_sim)
+ili_deaths[, dataelement := 'RN6Xa082AV2']
+ili_deaths[, rowid := 1:nrow(ili_deaths)]
+ili_deaths[, value := as.double(rbinom(1, value, 0.05)), by=rowid]  
+# Approximate 5% mortality (actually much lower than this)
+ili_deaths[, rowid := NULL]
+
+if (final_run) {  
+  write.csv(ili_deaths, 
+            paste('data/', Sys.Date(), 'sim_ili_deaths.csv'), 
+            row.names = FALSE, 
+            fileEncoding = 'UTF-8')
+}
