@@ -16,6 +16,30 @@ sim_surv_for_district <- function(n_obs) {
   }
 }
 
+gen_district_data_for_one_dataelement <- function(dataelement,
+                                                  orgunit,
+                                                  periods,
+                                                  categoryoptioncombo = 'HllvX50cXC0',
+                                                  attributeoptioncombo = 'HllvX50cXC0',
+                                                  storedby = 'admin',
+                                                  lastupdated = Sys.Date()) {
+  output <-
+    data.table::data.table(dataelement = dataelement,
+                           period = periods,
+                           orgunit = orgunit
+                           )
+  output[, `:=`(
+    categoryoptioncombo = categoryoptioncombo,
+    attributeoptioncombo = attributeoptioncombo
+  )][]
+  n_obs <- length(periods)
+  output[, value := sim_surv_for_district(n_obs)]
+  output[, `:=`(
+    storedby = storedby,
+    lastupdated = lastupdated
+  )][]
+}
+
 org_units <- fread('data/pakistan_organisational_unitsv3.csv')
 head(org_units)
 
@@ -55,29 +79,7 @@ end_date <- Sys.Date() - 7
 
 periods <- unique(dhis_period(seq(start_date, end_date, 1)))
 
-gen_district_data_for_one_dataelement <- function(dataelement,
-                                                  orgunit,
-                                                  periods,
-                                                  categoryoptioncombo = 'HllvX50cXC0',
-                                                  attributeoptioncombo = 'HllvX50cXC0',
-                                                  storedby = 'admin',
-                                                  lastupdated = Sys.Date()) {
-  output <-
-    data.table::data.table(dataelement = dataelement,
-                           period = periods,
-                           orgunit = orgunit
-                           )
-  output[, `:=`(
-    categoryoptioncombo = categoryoptioncombo,
-    attributeoptioncombo = attributeoptioncombo
-  )][]
-  n_obs <- length(periods)
-  output[, value := sim_surv_for_district(n_obs)]
-  output[, `:=`(
-    storedby = storedby,
-    lastupdated = lastupdated
-  )][]
-}
+final_run <- TRUE  # Only set to TRUE when ready to save data
 
 # Simulated measles data
 
@@ -87,7 +89,23 @@ measles_sim_list <-
 
 measles_sim <- rbindlist(measles_sim_list)
 
-write.csv(measles_sim,
-          paste('data/', Sys.Date(), 'sim_measles_data.csv'),
-          row.names = FALSE,
-          fileEncoding = 'UTF-8')
+if (final_run) {  
+  write.csv(measles_sim, 
+            paste('data/', Sys.Date(), 'sim_measles_data.csv'), 
+            row.names = FALSE, 
+            fileEncoding = 'UTF-8')
+}
+
+measles_deaths <- copy(measles_sim)
+measles_deaths[, dataelement := 'Mcrab8t8sxN']
+measles_deaths[, rowid := 1:nrow(measles_deaths)]
+measles_deaths[, value := as.double(rbinom(1, value, 0.1)), by=rowid]  
+# Approximate 10% mortality (actually much lower than this)
+measles_deaths[, rowid := NULL]
+
+if (final_run) {  
+  write.csv(measles_deaths, 
+            paste('data/', Sys.Date(), 'sim_measles_deaths.csv'), 
+            row.names = FALSE, 
+            fileEncoding = 'UTF-8')
+}
